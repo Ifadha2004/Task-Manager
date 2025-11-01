@@ -3,6 +3,25 @@
 @tailwind utilities;
 
 /* Global theme */
-:root { color-scheme: dark; }
-html, body, #root { height: 100%; }
-body { @apply bg-background text-text font-sans; }
+:root {
+  --bg: #0c0f13;
+  --panel: #0f141a;
+  --glass: rgba(255, 255, 255, 0.04);
+  --ring: rgba(255, 255, 255, 0.1);
+  --text: #e7e9ee;
+  --muted: #aeb4c2;
+
+  --success: #16a34a;
+  --pending: #64748b;
+  --review: #7c3aed;
+  --danger: #ef4444;
+
+  --rad: 18px;
+  --blur: 10px;
+  --card-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+}
+
+body {
+  background: radial-gradient(ellipse at top left, #0d1117 0%, #0a0e12 80%);
+  color: var(--text);
+}

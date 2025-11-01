@@ -1,14 +1,22 @@
+import { CheckCircle2, Clock } from "lucide-react";
+
 export default function StatusBadge({ status }: { status: "pending" | "completed" }) {
-  const base = "px-2 py-0.5 text-xs rounded-full border inline-flex items-center gap-1";
+  const base =
+    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium shadow-sm ring-1";
   if (status === "completed") {
     return (
-      <span className={`${base} border-neon/50 text-neon`}>
-        <svg width="12" height="12" viewBox="0 0 24 24" className="shrink-0">
-          <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Completed
+      <span
+        className={`${base} text-emerald-300 bg-emerald-500/10 ring-emerald-500/30`}
+      >
+        <CheckCircle2 size={12} /> Completed
       </span>
     );
   }
-  return <span className={`${base} border-zinc-600 text-zinc-300`}>Pending</span>;
+  return (
+    <span
+      className={`${base} text-slate-300 bg-slate-500/10 ring-slate-500/25`}
+    >
+      <Clock size={12} /> Pending
+    </span>
+  );
 }
