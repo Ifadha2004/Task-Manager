@@ -1,0 +1,78 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 🔹 Enums
+enum Role {
+  user
+  admin
+}
+
+enum TaskStatus {
+  pending
+  completed
+}
+
+// 🔹 Models
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(user)
+
+  createdTasks  Task[] @relation("CreatedTasks")
+  assignedTasks Task[] @relation("AssignedTasks")
+
+  // back-relation for ActivityLog.actor
+  activityLogs ActivityLog[] @relation("UserActivityLogs")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Task {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String?
+  status      TaskStatus @default(pending)
+  dueDate     DateTime?
+
+  createdById    Int
+  assignedUserId Int?
+  createdBy      User  @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedUser   User? @relation("AssignedTasks", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  // back-relation for ActivityLog.task
+  activityLogs ActivityLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assignedUserId])
+  @@index([createdById])
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  taskId    Int
+  actorId   Int
+  action    String // e.g., "CREATE", "UPDATE_STATUS", "ASSIGN", "DELETE"
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actor User @relation("UserActivityLogs", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([actorId])
+}
