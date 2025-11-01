@@ -1,22 +1,27 @@
 import TaskForm from "../components/tasks/TaskForm";
 import { http } from "../api/http";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "../lib/toast";
 
 export default function NewTaskPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const [params] = useSearchParams();
 
+  // string | null -> default to "" so the input is empty when not provided
+  const defaultAssignee = params.get("assignee") ?? "";
+
+  // NOTE: include `null` so it matches TaskForm's onSubmit signature
   async function handleCreate(data: {
     title: string;
     description?: string;
     dueDate?: string;
-    assignedUserId?: string | number;
+    assignedUserId?: string | number | null;
   }) {
     const payload = {
       ...data,
       assignedUserId:
-        data.assignedUserId === "" || data.assignedUserId === undefined
+        data.assignedUserId === "" || data.assignedUserId === undefined || data.assignedUserId === null
           ? null
           : Number(data.assignedUserId),
     };
@@ -26,12 +31,13 @@ export default function NewTaskPage() {
       toast.success("Task created", { title: "Success" });
       navigate("/tasks");
     } catch (err: any) {
+      console.error(err);
       const msg =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
         err?.message ||
         "Unknown error";
-      toast.error(`Failed to create task: ${msg}`, { title: "Error" });
+      toast.error(msg, { title: "Create failed" });
     }
   }
 
@@ -42,7 +48,11 @@ export default function NewTaskPage() {
           <span className="text-neon">+</span> New Task
         </h1>
       </div>
-      <TaskForm onSubmit={handleCreate} />
+
+      <TaskForm
+        onSubmit={handleCreate}
+        defaultAssignedUserId={defaultAssignee}
+      />
     </div>
   );
 }

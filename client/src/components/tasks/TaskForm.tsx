@@ -1,30 +1,93 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../common/Button";
+import { http } from "../../api/http";
+
+type UserLite = { id: number; name: string | null; email: string | null };
 
 interface TaskFormProps {
-  initialData?: any;
-  onSubmit: (data: any) => Promise<void>;
+  initialData?: {
+    title?: string;
+    description?: string | null;
+    dueDate?: string | null;
+    assignedUserId?: number | null;
+  };
+  onSubmit: (data: {
+    title: string;
+    description?: string;
+    dueDate?: string;
+    assignedUserId?: number | null;
+  }) => Promise<void>;
   onCancel?: () => void;
+  /** optionally preselect an assignee (e.g., from ?assignee=) */
+  defaultAssignedUserId?: string | number;
 }
 
-export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormProps) {
+export default function TaskForm({
+  initialData,
+  onSubmit,
+  onCancel,
+  defaultAssignedUserId,
+}: TaskFormProps) {
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [dueDate, setDueDate] = useState(
     initialData?.dueDate ? initialData.dueDate.slice(0, 10) : ""
   );
-  const [assignedUserId, setAssignedUserId] = useState(initialData?.assignedUserId || "");
+
+  // 🔹 select state uses string to allow "" (Optional). Convert to number | null on submit.
+  const [assignedUserId, setAssignedUserId] = useState<string>(
+    (initialData?.assignedUserId ?? defaultAssignedUserId ?? "") as any
+  );
+
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<UserLite[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  useEffect(() => {
+    // keep defaultAssignedUserId in sync
+    if (defaultAssignedUserId != null && defaultAssignedUserId !== "") {
+      setAssignedUserId(String(defaultAssignedUserId));
+    }
+  }, [defaultAssignedUserId]);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      setUsersLoading(true);
+      try {
+        const { data } = await http.get<UserLite[]>("/users/lite");
+        if (!cancel) setUsers(data ?? []);
+      } catch (_e) {
+        if (!cancel) setUsers([]);
+      } finally {
+        if (!cancel) setUsersLoading(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await onSubmit({ title, description, dueDate, assignedUserId });
-      setTitle("");
-      setDescription("");
-      setDueDate("");
-      setAssignedUserId("");
+      await onSubmit({
+        title,
+        description: description || undefined,
+        dueDate: dueDate || undefined,
+        assignedUserId:
+          assignedUserId === "" || assignedUserId == null
+            ? null
+            : Number(assignedUserId),
+      });
+      // reset only when creating
+      if (!initialData) {
+        setTitle("");
+        setDescription("");
+        setDueDate("");
+        setAssignedUserId("");
+      }
     } finally {
       setLoading(false);
     }
@@ -56,7 +119,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm mb-1 text-zinc-300">Due Date</label>
           <input
@@ -68,14 +131,20 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         </div>
 
         <div>
-          <label className="block text-sm mb-1 text-zinc-300">Assign To (User ID)</label>
-          <input
-            type="number"
+          <label className="block text-sm mb-1 text-zinc-300">Assign To</label>
+          <select
             className="w-full rounded-md bg-background border border-border p-2 text-sm text-text focus:border-neon focus:outline-none"
             value={assignedUserId}
             onChange={(e) => setAssignedUserId(e.target.value)}
-            placeholder="Optional"
-          />
+            disabled={usersLoading}
+          >
+            <option value="">Optional</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name ?? "Unnamed"}{u.email ? ` (${u.email})` : ""}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

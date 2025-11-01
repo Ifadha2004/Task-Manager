@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { http } from "../api/http";
 
 export type TaskLite = {
@@ -16,26 +16,24 @@ export function useTasks(filter: "all" | "pending" | "completed") {
   const [tasks, setTasks] = useState<TaskLite[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = filter === "all" ? {} : { status: filter };
-        const { data } = await http.get("/tasks", { params });
-        const list = Array.isArray(data) ? data : (data?.tasks ?? []);
-        if (!cancelled) setTasks(list);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Failed to fetch tasks");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const fetchNow = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = filter === "all" ? {} : { status: filter };
+      const { data } = await http.get("/tasks", { params });
+      const list = Array.isArray(data) ? data : (data?.tasks ?? []);
+      setTasks(list);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to fetch tasks");
+    } finally {
+      setLoading(false);
+    }
   }, [filter]);
 
-  return { loading, tasks, error };
+  useEffect(() => { void fetchNow(); }, [fetchNow]);
+
+  return { loading, tasks, error, refetch: fetchNow };
 }
 
 export function useMyTasks() {
@@ -43,23 +41,21 @@ export function useMyTasks() {
   const [tasks, setTasks] = useState<TaskLite[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data } = await http.get("/tasks/mine");
-        const list = Array.isArray(data) ? data : (data?.tasks ?? []);
-        if (!cancelled) setTasks(list);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Failed to fetch tasks");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const fetchNow = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await http.get("/tasks/mine");
+      const list = Array.isArray(data) ? data : (data?.tasks ?? []);
+      setTasks(list);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to fetch tasks");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { loading, tasks, error };
+  useEffect(() => { void fetchNow(); }, [fetchNow]);
+
+  return { loading, tasks, error, refetch: fetchNow };
 }
