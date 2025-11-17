@@ -1,12 +1,23 @@
 // src/routes/userRoutes.ts
 import express from "express";
-import { prisma } from "../db";
-import { requireAdmin, withUser } from "../middleware/auth";
+import { requireAuth, requireAdmin } from "../middleware/auth"; // ✅ use JWT middlewares
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 export const userRouter = express.Router();
 
-// public (authenticated) lite list for selectors
-userRouter.get("/lite", withUser, async (_req, res) => {
+// Option A: protect the whole router, then gate admin-only endpoints
+userRouter.use(requireAuth);
+
+userRouter.get("/", requireAdmin, async (_req, res) => {
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    orderBy: { id: "asc" },
+  });
+  res.json(users);
+});
+
+userRouter.get("/lite", async (_req, res) => {
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
@@ -14,11 +25,12 @@ userRouter.get("/lite", withUser, async (_req, res) => {
   res.json(users);
 });
 
-// Full list (admin only)
-userRouter.get("/", requireAdmin, async (_req, res) => {
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true },
-    orderBy: { id: "asc" },
+userRouter.get("/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
   });
-  res.json(users);
+  if (!user) return res.status(404).json({ error: "Not found" });
+  res.json(user);
 });

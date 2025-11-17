@@ -43,7 +43,6 @@ export default function Sidebar() {
       <div className="space-y-1">
         <Item to="/tasks" label="All Tasks" exact />
         <Item to="/tasks/mine" label="My Tasks" />
-        <Item to="/admin/users" label="Users (Admin)" />
       </div>
     </aside>
   );
