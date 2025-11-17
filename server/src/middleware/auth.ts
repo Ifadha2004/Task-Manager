@@ -42,20 +42,19 @@
 //   next();
 // }
 
-
+// server/src/middleware/auth.ts
 import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";             
+import jwt, { TokenExpiredError, type JwtPayload } from "jsonwebtoken";
 import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES = process.env.JWT_EXPIRES ?? "7d";
+const JWT_EXPIRES = process.env.JWT_EXPIRES ?? "1h"; 
 
 export type JwtUser = { id: number; role: Role; email: string; name: string | null };
 export type AuthedRequest = Request & { user?: JwtUser };
 
 export function signToken(user: { id: number; role: Role; email: string; name: string | null }) {
-  // jwt.sign(payload, secret, options) — with types from @types/jsonwebtoken
   return jwt.sign(
     { sub: user.id, role: user.role, email: user.email, name: user.name },
     JWT_SECRET,
@@ -70,7 +69,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const token = header.startsWith("Bearer ") ? header.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Missing Authorization header" });
 
-    const payload = jwt.verify(token, JWT_SECRET) as any;
+    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
     const user = await prisma.user.findUnique({
       where: { id: Number(payload.sub) },
@@ -85,7 +84,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       role: user.role,
     };
     next();
-  } catch {
+  } catch (err) {
+    if (err instanceof TokenExpiredError) {
+      return res.status(401).json({ error: "Token expired" });
+    }
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 }

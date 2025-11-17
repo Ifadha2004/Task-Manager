@@ -14,8 +14,12 @@
 //   return config;
 // });
 
-
-import axios, { type InternalAxiosRequestConfig, type AxiosRequestHeaders } from "axios";
+// client/src/api/http.ts
+import axios, {
+  type InternalAxiosRequestConfig,
+  type AxiosRequestHeaders,
+  type AxiosError,
+} from "axios";
 import { auth } from "../lib/auth";
 
 export const http = axios.create({
@@ -23,6 +27,7 @@ export const http = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// ✅ Attach JWT on every request
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = auth.get();
 
@@ -36,3 +41,22 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
   return config;
 });
+
+// ✅ Global 401 handler – auto-logout & redirect
+http.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    const status = error.response?.status;
+
+    if (status === 401) {
+      // Token invalid or expired → clear + send to login
+      auth.clear();
+
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
