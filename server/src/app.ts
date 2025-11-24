@@ -36,6 +36,7 @@ import { taskRouter } from "./routes/taskRoutes";
 import { userRouter } from "./routes/userRoutes";
 import { authRouter } from "./routes/authRoutes";
 import { requireAuth } from "./middleware/auth";
+import { adminRouter } from "./routes/adminRoutes";
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/auth", authRouter);
 app.use("/api", requireAuth);
 app.use("/api/users", userRouter);
 app.use("/api/tasks", taskRouter);
+app.use("/api/admin", adminRouter);
 
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error(err);

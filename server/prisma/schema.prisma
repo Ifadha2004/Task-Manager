@@ -27,7 +27,7 @@ model User {
   email    String @unique
   password String
   role     Role   @default(user)
-
+  active    Boolean  @default(true)
   createdTasks  Task[] @relation("CreatedTasks")
   assignedTasks Task[] @relation("AssignedTasks")
 
