@@ -134,7 +134,9 @@ export default function AdminDashboardPage() {
                 }))}
                 margin={{ top: 10, right: 20, left: 0, bottom: 40 }}
               >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                {/* Softer grid for dark theme */}
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272f" />
+
                 <XAxis
                   dataKey="name"
                   angle={-20}
@@ -143,17 +145,45 @@ export default function AdminDashboardPage() {
                   tick={{ fontSize: 11, fill: "#b4b4c7" }}
                 />
                 <YAxis tick={{ fontSize: 11, fill: "#b4b4c7" }} />
+
                 <Tooltip
+                  formatter={(value: any, name: string) => {
+                    const label =
+                      name === "completed"
+                        ? "Completed"
+                        : name === "pending"
+                        ? "Pending"
+                        : name;
+                    return [value, label];
+                  }}
                   contentStyle={{
-                    backgroundColor: "#06080c",
+                    backgroundColor: "#050816",
                     border: "1px solid #27272f",
                     borderRadius: 8,
                     fontSize: 12,
+                    color: "#e5e7eb",
                   }}
                 />
-                <Legend />
-                <Bar dataKey="completed" stackId="a" />
-                <Bar dataKey="pending" stackId="a" />
+                <Legend
+                  wrapperStyle={{ color: "#e5e7eb", fontSize: 12 }}
+                />
+
+                <Bar
+                  dataKey="completed"
+                  stackId="a"
+                  name="Completed"
+                  fill="#22c55e" // neon-ish green
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={true}
+                />
+                <Bar
+                  dataKey="pending"
+                  stackId="a"
+                  name="Pending"
+                  fill="#f97316" // warm orange
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={true}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

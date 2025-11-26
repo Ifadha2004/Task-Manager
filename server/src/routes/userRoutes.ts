@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth, requireAdmin } from "../middleware/auth"; // ✅ JWT middlewares
+import { requireAuth, requireAdmin, AuthedRequest } from "../middleware/auth"; // ✅ JWT middlewares
 import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -100,4 +100,83 @@ userRouter.get("/:id/tasks", requireAdmin, async (req, res) => {
   });
 
   res.json(tasks);
+});
+
+// ✅ update role (already implemented – kept for completeness)
+userRouter.patch("/:id/role", requireAdmin, async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const { role } = req.body as { role?: "admin" | "user" };
+  if (!role) return res.status(400).json({ error: "role is required" });
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: { role },
+    select: { id: true, name: true, email: true, role: true, createdAt: true, active: true },
+  });
+
+  res.json(user);
+});
+
+// ✅ enable / disable
+userRouter.patch("/:id/status", requireAdmin, async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+  const { active } = req.body as { active?: boolean };
+
+  if (active == null) return res.status(400).json({ error: "active flag required" });
+
+  // avoid disabling yourself
+  if (req.user && req.user.id === id) {
+    return res.status(400).json({ error: "You cannot disable your own account" });
+  }
+
+  // avoid disabling the last active admin
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true, active: true },
+  });
+  if (!target) return res.status(404).json({ error: "User not found" });
+
+  if (target.role === "admin" && active === false) {
+    const otherAdmins = await prisma.user.count({
+      where: { role: "admin", active: true, NOT: { id } },
+    });
+    if (otherAdmins === 0) {
+      return res.status(400).json({ error: "Cannot disable the last admin" });
+    }
+  }
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: { active },
+    select: { id: true, name: true, email: true, role: true, createdAt: true, active: true },
+  });
+
+  res.json(user);
+});
+
+// ✅ hard delete (optional – keep unsafe but guarded)
+userRouter.delete("/:id", requireAdmin, async (req: AuthedRequest, res) => {
+  const id = Number(req.params.id);
+
+  if (req.user && req.user.id === id) {
+    return res.status(400).json({ error: "You cannot delete yourself" });
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true },
+  });
+  if (!target) return res.status(404).json({ error: "User not found" });
+
+  if (target.role === "admin") {
+    const otherAdmins = await prisma.user.count({
+      where: { role: "admin", NOT: { id } },
+    });
+    if (otherAdmins === 0) {
+      return res.status(400).json({ error: "Cannot delete the last admin" });
+    }
+  }
+
+  await prisma.user.delete({ where: { id } });
+  return res.status(204).send();
 });
